@@ -6,31 +6,33 @@ namespace WeekDelegate
 {
     public class WeakDelegate
     {
-
         private Delegate _proxyDelegate;
-        private MethodInfo _targetEventHandlerMethodInfo;
+        private readonly MethodInfo _targetEventHandlerMethodInfo;
 
-        public WeakReference weakReferenceToTarget;
+        public WeakReference WeakReferenceToTarget;
 
 
-        public Delegate Week => _proxyDelegate;
+        public Delegate Weak => _proxyDelegate;
 
         public WeakDelegate(Delegate eventHandler)
         {
             _targetEventHandlerMethodInfo = eventHandler.GetMethodInfo();
-            weakReferenceToTarget = new WeakReference(eventHandler.Target);
+            WeakReferenceToTarget = new WeakReference(eventHandler.Target);
             CreateProxyDelegate();
         }
 
         private void CreateProxyDelegate()
         {
-            ParameterExpression[] eventHandlerParametersExpression = GenerateParametersExpression(_targetEventHandlerMethodInfo);
+            ParameterExpression[] eventHandlerParametersExpression =
+                GenerateParametersExpression(_targetEventHandlerMethodInfo);
 
-            Expression weakReferenceExpression = Expression.Constant(weakReferenceToTarget);
-            Type typeToCastProperty = weakReferenceToTarget.Target.GetType();
-            Expression targetObjectExpression = GetPropertyExpression(weakReferenceExpression, "Target", typeToCastProperty);
+            Expression weakReferenceExpression = Expression.Constant(WeakReferenceToTarget);
+            Type typeToCastProperty = WeakReferenceToTarget.Target.GetType();
+            Expression targetObjectExpression = GetPropertyExpression(weakReferenceExpression, "Target",
+                typeToCastProperty);
 
-            Expression targetMethodInvoke = Expression.Call(targetObjectExpression, _targetEventHandlerMethodInfo, eventHandlerParametersExpression);
+            Expression targetMethodInvoke = Expression.Call(targetObjectExpression, _targetEventHandlerMethodInfo,
+                eventHandlerParametersExpression);
 
             Expression nullExpression = Expression.Constant(null);
             Expression conditionExpression = Expression.NotEqual(targetObjectExpression, nullExpression);
@@ -40,10 +42,17 @@ namespace WeekDelegate
             _proxyDelegate = labmda.Compile();
         }
 
+        public static implicit operator Delegate(WeakDelegate weakReference)
+        {
+            return weakReference.Weak;
+        }
+
+
         private ParameterExpression[] GenerateParametersExpression(MethodInfo method)
         {
             ParameterInfo[] eventHandlerParametersInfo = method.GetParameters();
-            ParameterExpression[] eventHandlerParametersExpression= new ParameterExpression[eventHandlerParametersInfo.Length];
+            ParameterExpression[] eventHandlerParametersExpression =
+                new ParameterExpression[eventHandlerParametersInfo.Length];
             int i = 0;
             foreach (ParameterInfo parameter in eventHandlerParametersInfo)
             {
@@ -53,7 +62,8 @@ namespace WeekDelegate
             return eventHandlerParametersExpression;
         }
 
-        private Expression GetPropertyExpression(Expression objectExpression, String propertyName, Type typeToCastProperty = null)
+        private Expression GetPropertyExpression(Expression objectExpression, String propertyName,
+            Type typeToCastProperty = null)
         {
             Type classType = objectExpression.Type;
             PropertyInfo targetPropertyInfo = classType.GetProperty(propertyName);
