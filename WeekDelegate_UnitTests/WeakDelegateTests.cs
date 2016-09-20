@@ -27,6 +27,30 @@ namespace WeekDelegate_UnitTests
             long totalMemoryAfterCollect = GC.GetTotalMemory(true);
 
             Assert.AreEqual(true, totalMemoryBeforeCollect > totalMemoryAfterCollect);
+            Console.WriteLine("Delta: {0}", totalMemoryBeforeCollect - totalMemoryAfterCollect);
+        }
+
+        [TestMethod]
+        public void TestMemoryLeakDefaultDelegate()
+        {
+            EventSource eventSource = new EventSource();
+            EventListener eventListener = new EventListener();
+            eventSource.FirstEventSource +=
+                (Action<int>)eventListener.EventHandler;
+
+            long totalMemoryBeforeCollect = GC.GetTotalMemory(true);
+
+            eventListener = null;
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.WaitForFullGCComplete();
+            GC.Collect();
+
+            long totalMemoryAfterCollect = GC.GetTotalMemory(true);
+
+            Assert.AreEqual(true, totalMemoryBeforeCollect >= totalMemoryAfterCollect);
+            Console.WriteLine("Delta: {0}", totalMemoryBeforeCollect-totalMemoryAfterCollect);
         }
 
         [TestMethod]
@@ -44,7 +68,7 @@ namespace WeekDelegate_UnitTests
             GC.WaitForFullGCComplete();
             GC.Collect();
 
-            Assert.AreEqual(false, weakDelegate.weakReferenceToTarget.IsAlive);
+            Assert.AreEqual(false, weakDelegate.WeakReferenceToTarget.IsAlive);
         }
     }
 }
