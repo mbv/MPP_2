@@ -1,42 +1,39 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 using WeekDelegate;
 
 namespace WeekDelegate_UnitTests
 {
-    [TestClass]
+    [TestFixture]
     public class WeakDelegateTests
     {
-        [TestMethod]
+        private EventListener _eventListener;
+        private WeakDelegate _weakDelegate;
+
+        [Test]
         public void TestMemoryLeak()
         {
             EventSource eventSource = new EventSource();
-            EventListener eventListener = new EventListener();
-            eventSource.FirstEventSource +=
-                (Action<int>) new WeakDelegate((Action<int>) eventListener.EventHandler);
+            Allocate();
 
             long totalMemoryBeforeCollect = GC.GetTotalMemory(true);
 
-            eventListener = null;
+            _eventListener = null;
 
             GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.WaitForFullGCComplete();
-            GC.Collect();
-
             long totalMemoryAfterCollect = GC.GetTotalMemory(true);
 
             Assert.AreEqual(true, totalMemoryBeforeCollect > totalMemoryAfterCollect);
             Console.WriteLine("Delta: {0}", totalMemoryBeforeCollect - totalMemoryAfterCollect);
         }
 
-        [TestMethod]
+        [Test]
         public void TestMemoryLeakDefaultDelegate()
         {
             EventSource eventSource = new EventSource();
             EventListener eventListener = new EventListener();
             eventSource.FirstEventSource +=
-                (Action<int>)eventListener.EventHandler;
+                (Action<int>) eventListener.EventHandler;
 
             long totalMemoryBeforeCollect = GC.GetTotalMemory(true);
 
@@ -44,31 +41,35 @@ namespace WeekDelegate_UnitTests
 
             GC.Collect();
             GC.WaitForPendingFinalizers();
-            GC.WaitForFullGCComplete();
             GC.Collect();
 
             long totalMemoryAfterCollect = GC.GetTotalMemory(true);
 
             Assert.AreEqual(true, totalMemoryBeforeCollect >= totalMemoryAfterCollect);
-            Console.WriteLine("Delta: {0}", totalMemoryBeforeCollect-totalMemoryAfterCollect);
+            Console.WriteLine("Delta: {0}", totalMemoryBeforeCollect - totalMemoryAfterCollect);
         }
 
-        [TestMethod]
+        [Test]
         public void TestDeadWeekReferance()
         {
             EventSource eventSource = new EventSource();
-            EventListener eventListener = new EventListener();
-            WeakDelegate weakDelegate = new WeakDelegate((Action<int>) eventListener.EventHandler);
-            eventSource.FirstEventSource += (Action<int>) weakDelegate;
+            Allocate();
 
-            eventListener = null;
+            eventSource.FirstEventSource += (Action<int>) _weakDelegate;
+
+            _eventListener = null;
 
             GC.Collect();
             GC.WaitForPendingFinalizers();
-            GC.WaitForFullGCComplete();
             GC.Collect();
 
-            Assert.AreEqual(false, weakDelegate.WeakReferenceToTarget.IsAlive);
+            Assert.AreEqual(false, _weakDelegate.WeakReferenceToTarget.IsAlive);
+        }
+
+        private void Allocate()
+        {
+            _eventListener = new EventListener();
+            _weakDelegate = new WeakDelegate((Action<int>) _eventListener.EventHandler);
         }
     }
 }
